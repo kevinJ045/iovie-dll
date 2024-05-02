@@ -251,6 +251,8 @@ function parse(tokens) {
 
 	tokens = tokens.filter(t => !t.removeNext);
 
+	console.log(tokens);
+
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i];
 
@@ -355,16 +357,12 @@ function parse(tokens) {
 				i += 2;
 
 			} else if(current.openStructure) {
-				if(token.type == 'Semicolon'){
-					console.log(token);
-					delete current.openStructure;
-				} else if(token.type == 'Identifier'){
+				if(token.type == 'Identifier'){
 					// in current.openStructure.class.class.structure
 					const [className, structureName] = token.value.split('.');
 					
 					const nsClass = context.current.namespace.classes[className];
 					console.log('class', token.value);
-					console.log(tokens[i])
 					const struct = nsClass.structures[structureName];
 
 					const defValues = {...struct.values};
@@ -379,6 +377,10 @@ function parse(tokens) {
 						[structureName] = values;
 
 					i += 1;
+
+					if(tokens[i + 2].type !== "Comma"){
+						delete current.openStructure;
+					}
 
 				}
 
