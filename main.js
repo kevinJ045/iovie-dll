@@ -1,10 +1,13 @@
 import fs from "fs";
 console.log('=====================');
 
+function nameSpaceLookUp(context, classname){}
 
 function tokenize(string) {
 	const operators = ['?', '=', '+', '-', '*', '/', '%'];
 	const semicolons = [';'];
+	const colons = [':'];
+	const commas = [','];
 	const brackets = ['[', ']', '(', ')', '{', '}'];
 
 	const tokens = [];
@@ -15,6 +18,7 @@ function tokenize(string) {
 	let column = -1;
 	let isInString = false;
 	let stringDelimiter = '';
+	let isCommentLine = false;
 
 	for (let i = 0; i < string.length; i++) {
 		const char = string[i];
@@ -22,8 +26,17 @@ function tokenize(string) {
 		if (char === '\n') {
 			line += 1;
 			column = -1;
+			isCommentLine = false;
 		} else {
 			column += 1;
+		}
+
+		if(char == '#'){
+			isCommentLine = true;
+		}
+
+		if(!isInString && isCommentLine){
+			continue;
 		}
 
 		if ((char === ' ' || char === '\t' || char === '\n') && !isInString) {
@@ -79,6 +92,16 @@ function tokenize(string) {
 			continue;
 		}
 
+		if (colons.includes(char)) {
+			tokens.push({ type: 'Colon', value: char, line, column });
+			continue;
+		}
+		
+		if (commas.includes(char)) {
+			tokens.push({ type: 'Comma', value: char, line, column });
+			continue;
+		}
+
 		if (brackets.includes(char)) {
 			if (currentIdentifier.length > 0) {
 				tokens.push({ type: 'Identifier', value: currentIdentifier, line, column });
@@ -105,6 +128,7 @@ function parse(tokens) {
 	const context = {
 		namespaces: {},
 		all: {},
+		current: null
 	};
 
 	function parseIdentifier(tokens, index) {
@@ -145,6 +169,7 @@ function parse(tokens) {
 	}
 
 	function parseNode(o) {
+		console.log(o);
 		if (o.type == 'Node') {
 			const values = {};
 			o.value.map(i => i.value).forEach(o => { for (let i in o) values[i] = parseNode(o[i]) });
@@ -153,15 +178,22 @@ function parse(tokens) {
 			const values = {};
 			o.map(i => i.value).forEach(o => { for (let i in o) values[i] = parseNode(o[i]) });
 			return values;
-		} else return typeof o == "string" ? JSON.parse(o) : o;
+		} else return typeof o == "string" ? (
+			o.trim().startsWith("'[") && o.trim().endsWith("]'") ? JSON.parse(o.split("'")[1].split("'")[0].replace(/\n/g, ' ')) : JSON.parse(o)
+		) : o;
+	}
+
+	function parseBlock(block, raw){
+		const values = raw ? block : {};
+		if (!raw) block.value.map(i => i.value).forEach(o => { for (let i in o) values[i] = parseNode(o[i]) });
+		return values;
 	}
 
 	function parseValuesDeclaration(name, value, raw) {
 		const [ns, cs, sc] = name.split('.');
 		// console.log(name, value);
 		if (value.type == 'Bracket') return;
-		const values = raw ? value : {};
-		if (!raw) value.value.map(i => i.value).forEach(o => { for (let i in o) values[i] = parseNode(o[i]) });
+		const values = parseBlock(value, raw);
 		context.namespaces[ns].classes[cs].structures[sc] = {
 			values,
 			name
@@ -224,7 +256,7 @@ function parse(tokens) {
 
 		if (token && token.value === 'Std.Out') {
 			const [ns, cs, sc] = tokens[i + 1].value.split('.');
-			let t = context.namespaces[ns] || context.all[ns];
+			let t = context.namespaces[ns] || context.current?.context[ns];
 			if (cs) t = t.classes?.[cs] || t[cs];
 			if (sc) t = t.structures?.[sc] || t[sc];
 			console.log(t);
@@ -289,10 +321,88 @@ function parse(tokens) {
 
 				}
 
-			} else if (token.value in context.namespaces) {
+			} else if (!current.openStructure && token.value in context.namespaces) {
 				const namespace = context.namespaces[token.value];
 
+				const next = tokens[i + 1];
 
+				if(next.type == 'Identifier'){
+					const id = tokens[i + 2];
+					const name = next.value;
+
+					const newNs = {
+						type: 'Namespace',
+						namespace,
+						name: name,
+						context: {},
+						instances: []
+					};
+
+					if(namespace.id.startsWith('.')) newNs[namespace.id.split('.')[1]] = parseNode(id.value);
+
+					context.all[name] = newNs;
+
+					i += 2;
+				}
+			} else if(!current.openStructure && token.value == 'Using') {
+
+				const name = tokens[i + 1];
+				
+				const ns = context.all[name.value];
+
+				if(ns) context.current = ns;
+
+				i += 2;
+
+			} else if(current.openStructure) {
+				if(token.type == 'Semicolon'){
+					console.log(token);
+					delete current.openStructure;
+				} else if(token.type == 'Identifier'){
+					// in current.openStructure.class.class.structure
+					const [className, structureName] = token.value.split('.');
+					
+					const nsClass = context.current.namespace.classes[className];
+					console.log('class', token.value);
+					console.log(tokens[i])
+					const struct = nsClass.structures[structureName];
+
+					const defValues = {...struct.values};
+
+					const values = {
+						...defValues,
+						...parseBlock(tokens[i + 1])
+					};	
+
+
+					current.openStructure.class.values
+						[structureName] = values;
+
+					i += 1;
+
+				}
+
+			} else if(context.current){
+				if(token.value in context.current.namespace.classes){
+					const nsClass = context.current.namespace.classes[token.value];
+					const name = tokens[i + 1];
+					const id = tokens[i + 2];
+					const newClass = {
+						$class: nsClass,
+						$parent: context.current,
+						values: {},
+						[nsClass.id.split('.')[1]]: context.current.id + ':' + parseNode(id.value),
+						name: name.value
+					}
+					context.current.instances.push(newClass);
+					context.current.context[name.value] = newClass;
+
+					current.openStructure = {
+						class: newClass
+					};
+
+					i += 2;
+				}
 
 			}
 
@@ -314,6 +424,10 @@ Declare Class Package.RawTexture .id;
 Declare Class Package.EffectShader .id;
 Declare Class Package.UI .id;
 
+Declare Structure Package.Entity.baseData = {
+	health = 100;
+};
+
 Declare Structure Package.Entity.resource = {
 	source = "";
 	type = "";
@@ -321,10 +435,35 @@ Declare Structure Package.Entity.resource = {
 };
 
 Declare Structure Package.Item.resource = Copy Package.Entity.resource;
+Declare Structure Package.RawObject.resource = Copy Package.Entity.resource;
+Declare Structure Package.RawTexture.resource = Copy Package.Entity.resource;
 
-// Std.Out Package.Entity.resource;
+Declare Structure Package.RawTexture.texture = {
+	map = "[1, 1, 0, 1, 1, 0]"
+};
 
-Package I 'i;
+Std.Out Package.Entity.baseData;
+
+Package I "i";
+Using I;
+
+RawTexture GrassSegmentTexture "grass" = RawTexture.resource {
+  sources = '[
+    "./grass-texture-top.png",
+    "./grass-texture-side.png"
+	]';
+  type = "texture-map";
+}, RawTexture.texture {
+  map = '[1, 1, 0, 1, 1, 0]'
+};
+
+Entity Goober "goober" = Entity.resource {
+	source = "/rrr";
+}, Entity.baseData {
+	health = 10;
+};
+
+Std.Out Goober;
 `;
 
 
