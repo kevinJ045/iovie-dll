@@ -1,41 +1,33 @@
 
 
 export const DefaultScripts = {
-  'std::igd': {
-    'types': `
-      Declare Type string;
-      Declare Type number;
-      Declare Type boolean;
-      Declare Type @Declarable Namespace;
-      Declare Type @Declarable Class;
-      Declare Type @Declarable.Open Structure {};
-      
-      Inside Class Make Structure;
-      Inside Namespace Make Class;
-    `
-  },
-  'std::iovee': {
-    'base': `
-Declare Namespace Package name .id;
-Declass Class Package.Entity name .id;
-Declare Class Package.Item name .id;
-Declare Class Package.Biome name .id;
-Declare Class Package.BiomeStructure name .id;
-Declare Class Package.RawObject name .id;
-Declare Class Package.RawTexture name .id;
-Declare Class Package.EffectShader name .id;
-Declare Class Package.UI name .id;
+  'std::iovie': `
+Declare Namespace Package .id;
+Declare Class Package.Entity .id;
+Declare Class Package.Item .id;
+Declare Class Package.Biome .id;
+Declare Class Package.BiomeStructure .id;
+Declare Class Package.RawObject .id;
+Declare Class Package.RawTexture .id;
+Declare Class Package.EffectShader .id;
+Declare Class Package.UI .id;
 
-
-Declare Variable resource = {
-  source ?= "";
-  type ?= "";
-  loader ?= "";
+Declare Structure Package.Entity.baseData = {
+  health = 100;
 };
 
-Declare Structure Package.RawObject.resource = resource;
-// ... Other structures
+Declare Structure Package.Entity.resource = {
+  source = "";
+  type = "";
+  loader = "obj";
+};
 
-      `
-  }
+Declare Structure Package.Item.resource = Copy Package.Entity.resource;
+Declare Structure Package.RawObject.resource = Copy Package.Entity.resource;
+Declare Structure Package.RawTexture.resource = Copy Package.Entity.resource;
+
+Declare Structure Package.RawTexture.texture = {
+  map = '[1, 1, 0, 1, 1, 0]'
+};
+  `
 }

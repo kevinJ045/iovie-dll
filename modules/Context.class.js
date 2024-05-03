@@ -1,9 +1,4 @@
 
 
 
-export default class Context {
-
-  context = {};
-
-
-}
+export default class Context {}

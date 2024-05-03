@@ -93,11 +93,19 @@ function tokenize(string) {
 		}
 
 		if (colons.includes(char)) {
+			if (currentIdentifier.length > 0) {
+				tokens.push({ type: 'Identifier', value: currentIdentifier, line, column });
+				currentIdentifier = '';
+			}
 			tokens.push({ type: 'Colon', value: char, line, column });
 			continue;
 		}
 		
 		if (commas.includes(char)) {
+			if (currentIdentifier.length > 0) {
+				tokens.push({ type: 'Identifier', value: currentIdentifier, line, column });
+				currentIdentifier = '';
+			}
 			tokens.push({ type: 'Comma', value: char, line, column });
 			continue;
 		}
@@ -169,7 +177,7 @@ function parse(tokens) {
 	}
 
 	function parseNode(o) {
-		console.log(o);
+		// console.log(o);
 		if (o.type == 'Node') {
 			const values = {};
 			o.value.map(i => i.value).forEach(o => { for (let i in o) values[i] = parseNode(o[i]) });
@@ -184,6 +192,7 @@ function parse(tokens) {
 	}
 
 	function parseBlock(block, raw){
+		// console.log(block);
 		const values = raw ? block : {};
 		if (!raw) block.value.map(i => i.value).forEach(o => { for (let i in o) values[i] = parseNode(o[i]) });
 		return values;
@@ -197,6 +206,27 @@ function parse(tokens) {
 		context.namespaces[ns].classes[cs].structures[sc] = {
 			values,
 			name
+		}
+	}
+
+	function parseVariable(variable){
+		const namespace = variable.split('.');
+		if(context.current.context[namespace[0]]){
+			const B = context.current.context[namespace.shift()];
+			let C = B.values;
+			while(namespace.length){
+				if(C[namespace[0]]){
+					C = C[namespace.shift()];
+				} else if(B[namespace[0]]){
+					return C = B[namespace.shift()];
+				} else {
+					// Error(PRoperty not found, variable)
+					break;
+				}
+			}
+			return C;
+		} else {
+			// Error(Variable Not Found, variable)
 		}
 	}
 
@@ -219,8 +249,8 @@ function parse(tokens) {
 			const object = current.objects.pop();
 			// console.log('object', object)
 			// console.log(tokens[i], 'b', i);
-			tokens[i + 1].type = "Block";
-			tokens[i + 1].value = object.inside.map((token, i, tokens) => {
+			token.type = "Block";
+			token.value = object.inside.map((token, i, tokens) => {
 				if (token.passed) return;
 				if (token.type == "Identifier") {
 					if (tokens[i + 1].value == '=') {
@@ -240,8 +270,8 @@ function parse(tokens) {
 				}
 				return null;
 			}).filter(Boolean);
-			delete tokens[i + 1].removeNext;
-			token.removeNext = true;
+			delete token.removeNext;
+			// token.removeNext = true;
 		} else if (current.objects.length) {
 			current.objects[current.objects.length - 1].inside.push(token);
 			token.removeNext = true;
@@ -251,16 +281,21 @@ function parse(tokens) {
 
 	tokens = tokens.filter(t => !t.removeNext);
 
-	console.log(tokens);
+	// console.log(tokens);
 
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i];
 
 		if (token && token.value === 'Std.Out') {
-			const [ns, cs, sc] = tokens[i + 1].value.split('.');
-			let t = context.namespaces[ns] || context.current?.context[ns];
-			if (cs) t = t.classes?.[cs] || t[cs];
-			if (sc) t = t.structures?.[sc] || t[sc];
+			const namespace = tokens[i + 1].value.split('.');
+			let t;
+			if(context.namespaces[namespace[0]]){
+				t = context.namespaces[namespace.shift()];
+				if(namespace[0]) t = t.classes[namespace.shift()];
+				if(namespace[0]) t = t.structures[namespace.shift()];
+			} else {
+				t = parseVariable(tokens[i + 1].value);
+			}
 			console.log(t);
 			i += 2;
 		} else if (token.type === 'Identifier') {
@@ -357,30 +392,56 @@ function parse(tokens) {
 				i += 2;
 
 			} else if(current.openStructure) {
+
 				if(token.type == 'Identifier'){
 					// in current.openStructure.class.class.structure
 					const [className, structureName] = token.value.split('.');
+
+					// console.log('class', className, structureName);
 					
 					const nsClass = context.current.namespace.classes[className];
-					console.log('class', token.value);
+					// console.log('class', token.value);
 					const struct = nsClass.structures[structureName];
 
 					const defValues = {...struct.values};
 
-					const values = {
+					const nextToken = tokens[i + 1];
+
+					let values = {
 						...defValues,
-						...parseBlock(tokens[i + 1])
 					};	
 
+					if(nextToken.type == 'Identifier'){
+						if(context.current.context[nextToken.value]){
+							values = context.current.context[nextToken.value];
+						} else if(nextToken.value.indexOf('.') > -1){
+							const val = parseVariable(nextToken.value);
+							if(val){
+								values = {
+									...values,
+									...val
+								};
+							}
+						}
+					} else if(nextToken.type == "Block") {
+						values = {
+							...values,
+							...parseBlock(nextToken)
+						}
+					}
+
+					
 
 					current.openStructure.class.values
 						[structureName] = values;
 
-					i += 1;
+					// console.log(tokens[i + 2]);
 
-					if(tokens[i + 2].type !== "Comma"){
+					if(tokens[i + 2].type === "Semicolon"){
 						delete current.openStructure;
 					}
+
+					i += 1;
 
 				}
 
@@ -444,10 +505,15 @@ Declare Structure Package.RawTexture.texture = {
 	map = "[1, 1, 0, 1, 1, 0]"
 };
 
-Std.Out Package.Entity.baseData;
-
 Package I "i";
 Using I;
+
+
+RawObject Segment "segment" = RawObject.resource {
+  source = "./segment.obj";
+  loader = "obj";
+  type = "object";
+};
 
 RawTexture GrassSegmentTexture "grass" = RawTexture.resource {
   sources = '[
@@ -459,9 +525,7 @@ RawTexture GrassSegmentTexture "grass" = RawTexture.resource {
   map = '[1, 1, 0, 1, 1, 0]'
 };
 
-Entity Goober "goober" = Entity.resource {
-	source = "/rrr";
-}, Entity.baseData {
+Entity Goober "goober" = Entity.resource Segment.resource, Entity.baseData {
 	health = 10;
 };
 
