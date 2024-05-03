@@ -1,0 +1,5 @@
+manifest:
+  id: !id 'goober'
+base:
+  health: 100
+  speed: 4
