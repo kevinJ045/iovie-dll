@@ -1,5 +1,9 @@
 manifest:
   id: !id 'goober'
+  type: 'entity'
 base:
   health: 100
   speed: 4
+view:
+  material:
+    shader: !import '../../bin/shaders/some.glsl'

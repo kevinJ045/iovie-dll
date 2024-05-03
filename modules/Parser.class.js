@@ -47,9 +47,13 @@ export default class Parser {
   }
 
   importFile(filename) {
-    return filename.endsWith('.yaml')
+    const currentPath = this.context.currentFile; 
+    const file = filename.endsWith('.yaml')
     ? this.parseYAML(filename)
-    : this.lookUpFile(filename);
+    : this.lookUpFile(this.folderTagHandler(filename));
+    this.context.currentFile = currentPath;
+    return file;
+    
   }
 
   lookUpFile(filePath){
