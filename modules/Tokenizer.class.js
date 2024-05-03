@@ -1,4 +1,11 @@
 
+const TOKENS = {
+  operators: ['?', '=', '+', '-', '*', '/', '%'],
+  semicolons: [';'],
+  colons: [':'],
+  commas: [','],
+  brackets: ['(', ')', '{', '}']
+}
 
 export class Token {
   constructor({
@@ -18,11 +25,6 @@ export class Token {
 export default class Tokenizer {
 	constructor(string) {
 		this.string = string;
-		this.operators = ['?', '=', '+', '-', '*', '/', '%'];
-		this.semicolons = [';'];
-		this.colons = [':'];
-		this.commas = [','];
-		this.brackets = ['[', ']', '(', ')', '{', '}'];
 		this.tokens = [];
 		this.currentIdentifier = '';
 		this.currentString = '';
@@ -67,6 +69,14 @@ export default class Tokenizer {
 				continue;
 			}
 
+      if ((char === ' ' || char === '\t' || char === '\n') && !this.isInString) {
+        if (this.currentIdentifier) {
+          this.makeToken({ type: 'Identifier', value: this.currentIdentifier });
+          this.currentIdentifier = '';
+        }
+        continue;
+      }
+
 			if (char === '"' || char === "'") {
 				if (!this.isInString) {
 					this.isInString = true;
@@ -87,7 +97,17 @@ export default class Tokenizer {
 				continue;
 			}
 
-			if (this.operators.includes(char)) {
+      if (this.isInString) {
+        this.currentString += char;
+        if (char === '\\' && i + 1 < string.length) {
+          this.currentString += string[i + 1];
+          i++;
+          this.column++;
+        }
+        continue;
+      } 
+
+			if (TOKENS.operators.includes(char)) {
 				if (this.currentIdentifier.length > 0) {
           this.makeToken({ type: 'Identifier', value: this.currentIdentifier });
           this.currentIdentifier = '';
@@ -96,7 +116,7 @@ export default class Tokenizer {
 				continue;
 			}
 
-			if (this.semicolons.includes(char)) {
+			if (TOKENS.semicolons.includes(char)) {
 				if (this.currentIdentifier.length > 0) {
 					this.makeToken({ type: 'Identifier', value: this.currentIdentifier });
           this.currentIdentifier = '';
@@ -105,7 +125,7 @@ export default class Tokenizer {
 				continue;
 			}
 
-			if (this.colons.includes(char)) {
+			if (TOKENS.colons.includes(char)) {
 				if (this.currentIdentifier.length > 0) {
 					this.makeToken({ type: 'Identifier', value: this.currentIdentifier });
           this.currentIdentifier = '';
@@ -114,7 +134,7 @@ export default class Tokenizer {
 				continue;
 			}
 
-			if (this.commas.includes(char)) {
+			if (TOKENS.commas.includes(char)) {
 				if (this.currentIdentifier.length > 0) {
 					this.makeToken({ type: 'Identifier', value: this.currentIdentifier });
           this.currentIdentifier = '';
@@ -123,7 +143,7 @@ export default class Tokenizer {
 				continue;
 			}
 
-			if (this.brackets.includes(char)) {
+			if (TOKENS.brackets.includes(char)) {
 				if (this.currentIdentifier.length > 0) {
 					this.makeToken({ type: 'Identifier', value: this.currentIdentifier });
           this.currentIdentifier = '';
