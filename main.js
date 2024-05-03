@@ -1,7 +1,11 @@
 import fs from "fs";
 import Tokenizer from "./modules/Tokenizer.class";
 import Parser from "./modules/Parser.class";
+import DefaultScripts from "./modules/DefaultScripts.const";
+import { Script } from "./modules/Script.class";
 console.log('=====================');
+
+DefaultScripts.register('std::iovie', fs.readFileSync('./packages/std/iovie.idg'))
 
 function nameSpaceLookUp(context, classname){}
 
@@ -535,11 +539,14 @@ Std.Out Goober;
 `;
 
 
-const text = fs.readFileSync('./packages/I/main.idg', { encoding: 'utf-8' });
-const tokens = new Tokenizer(inputString);
-const parser = new Parser(tokens);
+// const text = fs.readFileSync('./packages/I/main.idg', { encoding: 'utf-8' });
+// const tokens = new Tokenizer(inputString);
+// const parser = new Parser(tokens);
 
-parser.parse();
+// parser.parse();
+
+new Script({ filepath: './packages/I/main.idg' })
+	.execute();
 
 // console.log(tokens.tokens);
 // console.log(tokenize(inputString));

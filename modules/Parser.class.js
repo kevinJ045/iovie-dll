@@ -1,9 +1,13 @@
 import Context from "./Context.class";
 import Tokenizer from "./Tokenizer.class";
+import path from "path";
 
-
+console.log(path.relative('./main.js', '../'));
 
 export default class Parser {
+
+  filepath = '';
+  filepaths = [];
 
   /**
    * 
@@ -101,6 +105,10 @@ export default class Parser {
     }
   }
 
+  includeFile(filename){
+    
+  }
+
   parse() {
 
     let tokens = this.tokenizer.tokenize();
@@ -108,6 +116,32 @@ export default class Parser {
     let current = {
       objects: []
     };
+
+    const includeFiles = () => {
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+
+        if (token.type === 'Identifier' && token.value === 'Include') {
+          const filePathToken = tokens[i + 1];
+          if (filePathToken && filePathToken.type === 'String') {
+            const filePath = filePathToken.value;
+
+            this.filepaths.push(this.filepath);
+            
+            const includedTokens = this.includeFile(filePath);
+            
+            this.filepaths.pop();
+
+            tokens.splice(i, 2, ...includedTokens);
+            
+            i += includedTokens.length - 1;
+            continue;
+          }
+        }
+      }
+    }
+
+    includeFiles();
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
