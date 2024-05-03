@@ -1,0 +1,6 @@
+
+RawObject Segment "segment" = RawObject.resource {
+  source = "./segment.obj";
+  loader = "obj";
+  type = "object";
+};

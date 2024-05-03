@@ -2,6 +2,7 @@ import
   fs
 from 
   "fs";
+import path from "path";
 
 
 /**
@@ -20,7 +21,7 @@ export default class IFile {
   constructor({
     filepath
   }){
-    this.filepath = filepath
+    this.filepath = path.resolve(filepath);
   }
 
   /**

@@ -1,8 +1,8 @@
 import Context from "./Context.class";
+import DefaultScripts from "./DefaultScripts.const";
+import IFile from "./File.class";
 import Tokenizer from "./Tokenizer.class";
 import path from "path";
-
-console.log(path.relative('./main.js', '../'));
 
 export default class Parser {
 
@@ -105,8 +105,20 @@ export default class Parser {
     }
   }
 
-  includeFile(filename){
-    
+  includeFile(filename, pkgname){
+    if(pkgname in DefaultScripts.scripts){
+      return new Tokenizer(DefaultScripts.scripts[pkgname]).tokenize();
+    } else {
+      return new Tokenizer(
+        new IFile({ filepath: filename })
+          .read()
+      ).tokenize();
+    }
+  }
+
+  unstringify(string){
+    const delimiter = string[0];
+    return string.split(delimiter)[1].split(delimiter)[0];
   }
 
   parse() {
@@ -117,31 +129,34 @@ export default class Parser {
       objects: []
     };
 
-    const includeFiles = () => {
+    const includeFiles = (cpath) => {
       for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
 
         if (token.type === 'Identifier' && token.value === 'Include') {
           const filePathToken = tokens[i + 1];
           if (filePathToken && filePathToken.type === 'String') {
-            const filePath = filePathToken.value;
+            const filePath = this.unstringify(filePathToken.value);
 
-            this.filepaths.push(this.filepath);
+            const cdir = path.dirname(cpath);
+            const p = path.resolve(cdir, filePath);
             
-            const includedTokens = this.includeFile(filePath);
-            
-            this.filepaths.pop();
+            const includedTokens = this.includeFile(p, filePath);
 
             tokens.splice(i, 2, ...includedTokens);
             
+            if(tokens.some(i => i.type == 'Identifier' && i.value == 'Include'))
+              includeFiles(p);
+
             i += includedTokens.length - 1;
             continue;
           }
         }
       }
+
     }
 
-    includeFiles();
+    includeFiles(this.filepath);
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];

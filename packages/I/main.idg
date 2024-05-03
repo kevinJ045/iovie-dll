@@ -1,41 +1,9 @@
 Include 'std::iovie';
 
 
-Package I 'i';
+Package I "i";
 Using I;
 
+Include './segment.idg';
 
-RawObject I.Segment "segment" = with RawObject.resource {
-  source = "./segment.obj";
-  loader = "obj";
-  type = "object";
-};
-RawTexture I.GrassSegmentTexture "grass" = with RawTexture.resource {
-  sources = [
-    "./grass-texture-top.png"
-  ];
-  type = "texture-map";
-}, with RawTexture.texture {
-  map = [1, 1, 0, 1, 1, 0]
-};
-
-Biome I.GrassLand "grassland" = with Biome.baseData {
-  name = "grassland";
-}, with Biome.config {
-  colors = [
-    "#00ff00"
-    "#01ddc1"
-  ];
-}, with Biome.ground {
-  segment = I.Segment;
-  texture = I.GrassSegmentTexture;
-}, with Biome.Tile {
-  multicolor = true;
-  keepdefault = true;
-};
-
-Entity I.Goober "goober" = with Entity.baseData {
-  health = 
-}, with Entity.environment {
-  biome = I.GrassLand;
-};
+Std.Out Segment

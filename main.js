@@ -5,7 +5,7 @@ import DefaultScripts from "./modules/DefaultScripts.const";
 import { Script } from "./modules/Script.class";
 console.log('=====================');
 
-DefaultScripts.register('std::iovie', fs.readFileSync('./packages/std/iovie.idg'))
+DefaultScripts.register('std::iovie', fs.readFileSync('./packages/std/iovie.idg', { encoding: 'utf-8' }))
 
 function nameSpaceLookUp(context, classname){}
 
