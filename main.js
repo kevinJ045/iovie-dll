@@ -1,4 +1,5 @@
 import fs from "fs";
+import Tokenizer from "./modules/Tokenizer.class";
 console.log('=====================');
 
 function nameSpaceLookUp(context, classname){}
@@ -534,7 +535,8 @@ Std.Out Goober;
 
 
 const text = fs.readFileSync('./packages/I/main.idg', { encoding: 'utf-8' });
-const tokens = tokenize(inputString);
-const context = parse(tokens);
+const tokens = new Tokenizer(inputString);
+tokens.tokenize();
+// const context = parse(tokens.tokens);
 
-// console.log(context);
+console.log(tokens.tokens);
