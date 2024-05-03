@@ -23,5 +23,5 @@ Declare Structure Package.RawObject.resource = Copy Package.Entity.resource;
 Declare Structure Package.RawTexture.resource = Copy Package.Entity.resource;
 
 Declare Structure Package.RawTexture.texture = {
-  map = '[1, 1, 0, 1, 1, 0]'
+  map = [1, 1, 0, 1, 1, 0]
 };

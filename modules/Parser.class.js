@@ -19,7 +19,7 @@ export default class Parser {
   }
 
   isValue(i) {
-    return i === 'Identifier' || i === 'String' || i === 'Block';
+    return i === 'Identifier' || i === 'String' || i === 'Block' || i == 'Array';
   }
 
   parseIdentifier(tokens, index) {
@@ -55,9 +55,13 @@ export default class Parser {
       });
       return values;
     } else if (Array.isArray(o)) {
-      const values = {};
+      let values = {};
       o.map(i => i.value).forEach(o => {
-        for (let i in o) values[i] = this.parseNode(o[i]);
+        if(typeof o == "object") for (let i in o) values[i] = this.parseNode(o[i]);
+        else {
+          if(!Array.isArray(values)) values = [];
+          values.push(this.parseNode(o))
+        }
       });
       return values;
     } else {
@@ -67,10 +71,30 @@ export default class Parser {
     }
   }
 
+
+  parseArray(arrayToken) {
+    const arrayValues = [];
+    // Iterate through the array tokens
+    for (let i = 0; i < arrayToken.value.length; i++) {
+      const itemToken = arrayToken.value[i];
+      if (typeof itemToken == "object" && itemToken.type === 'Node') {
+        arrayValues.push(this.parseNode(itemToken));
+      } else {
+        arrayValues.push(itemToken.value);
+      }
+    }
+    return arrayValues;
+  }
+
   parseBlock(block, raw) {
-    const values = raw ? block : {};
-    if (!raw) block.value.map(i => i.value).forEach(o => {
-      for (let i in o) values[i] = this.parseNode(o[i]);
+    let values = raw ? block : (block.type == 'Array' ? [] : {});
+    // console.log(values);
+    if (!raw) block.type == 'Array' ? 
+    values = block.value.map(i => this.parseNode(i.value))
+    : block.value.map(i => i.value).forEach(o => {
+      if(Array.isArray(o)){
+        values = o.map(i => this.parseNode(i));
+      } else for (let i in o) values[i] = this.parseNode(o[i]);
     });
     return values;
   }
@@ -126,7 +150,8 @@ export default class Parser {
     let tokens = this.tokenizer.tokenize();
 
     let current = {
-      objects: []
+      objects: [],
+      arrays: []
     };
 
     const includeFiles = (cpath) => {
@@ -166,6 +191,32 @@ export default class Parser {
         continue;
       }
 
+      if (token.type === 'Bracket' && token.value === '[') {
+        current.arrays.push([]);
+        token.removeNext = true;
+      } else if (token.type === 'Bracket' && token.value === ']') {
+        const arrayContent = current.arrays.pop();
+
+        tokens[i].type = 'Array';
+        tokens[i].value = arrayContent.filter(i => i.type !== 'Comma');
+        
+      } else if (current.arrays.length) {
+        current.arrays[current.arrays.length - 1].push(token);
+        token.removeNext = true;
+      }
+
+    }
+
+    tokens = tokens.filter(t => !t.removeNext);
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+
+      if (token.passed) {
+        token.removeNext = true;
+        continue;
+      }
+
       if (token.type === 'Bracket' && token.value === '{') {
         token.removeNext = true;
         current.objects.push({ token, inside: [] });
@@ -175,18 +226,22 @@ export default class Parser {
         token.value = object.inside.map((token, i, tokens) => {
           if (token.passed) return;
           if (token.type === 'Identifier') {
-            if (tokens[i + 1].value === '=') {
+            if (tokens[i + 1]?.value === '=') {
               const name = token.value;
+              // console.log(name, tokens[i + 2]);
               if (this.isValue(tokens[i + 2]?.type)) {
                 const value = tokens[i + 2].value;
                 tokens[i + 1].passed = true;
                 tokens[i + 2].passed = true;
                 tokens[i + 2].removeNext = true;
+                // console.log(value, 'value');
                 return {
                   type: 'Node',
                   value: { [name]: value }
                 };
               }
+            } else {
+              // Error (no assignment)
             }
           }
           return null;
@@ -199,6 +254,8 @@ export default class Parser {
     }
 
     tokens = tokens.filter(t => !t.removeNext);
+
+    // console.log(tokens);
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
@@ -238,8 +295,9 @@ export default class Parser {
             const value = tokens[i + 4];
             if (value.type === 'Identifier' && value.value === 'Copy') {
               const [ns, cs, sc] = tokens[i + 5].value.split('.');
-              this.parseValuesDeclaration(name, {
-                ...(this.context?.namespaces?.[ns]?.classes?.[cs]?.structures?.[sc]?.values || {}),
+              const item = this.context?.namespaces?.[ns]?.classes?.[cs]?.structures?.[sc]?.values;
+              this.parseValuesDeclaration(name, Array.isArray(item) ? [...item] : {
+                ...(item || {}),
               }, true);
             } else {
               this.parseValuesDeclaration(name, value);

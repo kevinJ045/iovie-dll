@@ -4,7 +4,7 @@ const TOKENS = {
   semicolons: [';'],
   colons: [':'],
   commas: [','],
-  brackets: ['(', ')', '{', '}']
+  brackets: ['(', ')', '{', '}', '[', ']']
 }
 
 export class Token {

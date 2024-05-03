@@ -6,4 +6,16 @@ Using I;
 
 Include './segment.idg';
 
-Std.Out Segment
+
+
+RawTexture GrassSegmentTexture "grass" = RawTexture.resource {
+  sources = [
+    "./grass-texture-top.png",
+    "./grass-texture-side.png"
+	];
+  type = "texture-map";
+}, RawTexture.texture {
+  null = null;
+};
+
+Std.Out GrassSegmentTexture
